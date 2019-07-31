@@ -8,6 +8,7 @@
     <PackageReference Include="AngleSharp" Version="0.12.1" />
     <PackageReference Include="DSharpPlus" Version="3.2.3" />
     <PackageReference Include="DSharpPlus.CommandsNext" Version="3.2.3" />
+    <PackageReference Include="Google.Apis.Customsearch.v1" Version="1.40.2.1369" />
   </ItemGroup>
   <ItemGroup>
     <None Update="Settings.job">

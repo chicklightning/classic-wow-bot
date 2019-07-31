@@ -8,6 +8,7 @@ using DSharpPlus;
 using DSharpPlus.CommandsNext;
 using DSharpPlus.CommandsNext.Attributes;
 using DSharpPlus.Entities;
+using AngleSharp.Html.Dom;
 
 namespace ClassicWoWBot
 {
@@ -116,7 +117,7 @@ namespace ClassicWoWBot
                 Title = "Today's Incidents on Light's Hope"
             };
 
-            // Grab the first relevant section, <div class="alert ..."></div> from the doc
+            // Grab the first relevant section, first <p></p> in <div class="panel-body ..."></div> from the doc
             var incidentDiv = document.QuerySelector("div.panel-body > p");
             string incidentList = incidentDiv.TextContent;
 
@@ -151,8 +152,8 @@ namespace ClassicWoWBot
         private static readonly HttpClient client = new HttpClient();
 
         [Command("linkerator")] // let's define this method as a command
-        [Description("Shows the current status of the Light's Hope classic server.")] // this will be displayed to tell users what this command does when they invoke help
-        public async Task Linkerator(CommandContext context) // this command takes no arguments
+        [Description("Type the name of an existing item and it will show up with a link in chat.")] // this will be displayed to tell users what this command does when they invoke help
+        public async Task Linkerator(CommandContext context, [Description("The item you want to link.")] string item)
         {
             // let's trigger a typing indicator to let users know we're working
             await context.TriggerTypingAsync();
@@ -163,70 +164,53 @@ namespace ClassicWoWBot
             // Create a new context for evaluating webpages with the given config
             var browseContext = BrowsingContext.New(config);
 
-            // Source to be parsed
-            string response = await client.GetStringAsync("https://status.lightshope.org/");
+            string apiKey = Environment.GetEnvironmentVariable("GOOGLE_API_KEY");
+            string customSearchEngine = Environment.GetEnvironmentVariable("SEARCH_ENGINE_KEY");
+            var svc = new Google.Apis.Customsearch.v1.CustomsearchService(new Google.Apis.Services.BaseClientService.Initializer { ApiKey = apiKey });
+            var listRequest = svc.Cse.List(item);
 
-            // Create a virtual request to specify the document to load (here from our fixed string)
-            var document = await browseContext.OpenAsync(req => req.Content(response));
-
-            // Grab the first relevant section, <div class="alert ..."></div> from the doc
-            var generalStatusDiv = document.QuerySelector("div.alert");
-            string generalStatus = generalStatusDiv.TextContent;
-
-            // let's make the message a bit more colourful
-            DiscordEmoji generalStatusEmoji;
-            if (generalStatus.Contains("operational"))
-            {
-                // Set to 👌
-                generalStatusEmoji = DiscordEmoji.FromName(context.Client, ":ok_hand:");
-            }
-            else
-            {
-                // Set to 👎
-                generalStatusEmoji = DiscordEmoji.FromName(context.Client, ":thumbsdown:");
-            }
-
-            // Grab all <small class="text-component-1 ..."></small> from the doc
-            var allSmall = document.QuerySelectorAll("small.text-component-1");
-
-            // the sixth element in this list is the Northdale server
-            string serverStatus = $"Northdale Server is {allSmall[5].TextContent.ToLower()}";
-
-            DiscordEmoji serverStatusEmoji;
-            DiscordColor textColor;
-            if (generalStatus.Contains("operational"))
-            {
-                // Set to 👌
-                serverStatusEmoji = DiscordEmoji.FromName(context.Client, ":ok_hand:");
-
-                textColor = DiscordColor.PhthaloGreen;
-            }
-            else
-            {
-                // Set to 👎
-                serverStatusEmoji = DiscordEmoji.FromName(context.Client, ":thumbsdown:");
-
-                textColor = DiscordColor.Red;
-            }
+            listRequest.Cx = customSearchEngine;
+            var searchItem = listRequest.Execute().Items[0]; // get the first search result in the list
 
             // wrap it into an embed
-            var embed = new DiscordEmbedBuilder
+            var embed = new DiscordEmbedBuilder();
+            embed.WithFooter($"Search results for {item}...");
+
+            if (searchItem.Title.Contains("Item")) // item is an item!
             {
-                Title = "Light's Hope Status",
-                Description = $"{serverStatusEmoji} {serverStatus} | {generalStatusEmoji} {generalStatus}",
+                embed.WithTitle(searchItem.Title.Replace(" - Item - World of Warcraft", ""));
+                embed.WithDescription(searchItem.Snippet);
+                embed.WithUrl(searchItem.Link);
 
-                Timestamp = DateTime.Now
-            };
+                // Source to be parsed
+                string response = await client.GetStringAsync(searchItem.Link);
 
-            // text color green if operational, otherwise red
-            embed.WithColor(textColor);
+                var document = await browseContext.OpenAsync(req => req.Content(response));
+
+                // all <link> tags
+                var links = document.QuerySelectorAll("link");
+                foreach (var link in links)
+                {
+                    // looking for <link rel="image_src" href="item icon image">
+                    if (link.HasAttribute("rel") && link.GetAttribute("rel").Contains("image_src") &&
+                        link.HasAttribute("href"))
+                    {
+                        embed.WithThumbnailUrl(link.GetAttribute("href"));
+                    }
+                }
+            }
+            else // not an item
+            {
+                DiscordEmoji searchEmoji = DiscordEmoji.FromName(context.Client, ":grimacing:");
+                embed.WithTitle($"{searchEmoji} Couldn't find a page for this item, is it possible you misspelled it or it isn't an item from Classic WoW?");
+            }
 
             // respond with content
             await context.RespondAsync(embed: embed);
         }
 
         [Command("find")]
-        [Description("Says whether any incidents have occurred today in Light's Hope servers.")]
+        [Description("Returns the first link from Classic WoWHead for your search term.")]
         public async Task Find(CommandContext context)
         {
             // let's trigger a typing indicator to let
