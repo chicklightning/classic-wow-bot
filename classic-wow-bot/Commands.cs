@@ -29,7 +29,7 @@ namespace ClassicWoWBot
             var embed = new DiscordEmbedBuilder
             {
                 Title = "About Classic WoW Bot",
-                Description = $"{codeEmoji} This is a link to my GitHub repository! From there you can view a more in-depth explanation of bot commands, and get a link to my bot page (where you can get a server invite link, and vote on it).",
+                Description = $"{codeEmoji} This is a link to my GitHub repository! From there you can view a more in-depth explanation of bot commands, and get a link to my DiscordBots page.",
                 Url = "https://github.com/chicklightning/classic-wow-bot",
                 Color = DiscordColor.Purple
             };
