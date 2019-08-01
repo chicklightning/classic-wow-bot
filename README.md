@@ -1,4 +1,7 @@
 # Classic World of Warcraft Bot for Discord
+[![Discord Bots](https://discordbots.org/api/widget/status/604922956329779210.svg)](https://discordbots.org/bot/604922956329779210)
+[![Discord Bots](https://discordbots.org/api/widget/upvotes/604922956329779210.svg)](https://discordbots.org/bot/604922956329779210)
+[![Discord Bots](https://discordbots.org/api/widget/lib/604922956329779210.svg)](https://discordbots.org/bot/604922956329779210)
 
 Discord bot for linking and searching Classic WoWHead.
 
@@ -22,6 +25,14 @@ Discord bot for linking and searching Classic WoWHead.
 **wow help [subcommand]**
 
 > The bot will give you information on the subcommand's purpose and how to properly call it.
+
+
+---
+
+
+**wow about**
+
+> Will give you a link to the GitHub repository, which has a link to the DiscordBots page and this readme!
 
 
 ## Classic WoWHead Commands
