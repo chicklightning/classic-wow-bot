@@ -28,6 +28,7 @@ Discord bot for linking and searching Classic WoWHead.
 **wow linkerator "[item name]"**
 
 > Type the name of an item from Classic World of Warcraft and the bot will return its official name, a short description, its icon, and a link to the page from Classic WoWHead. If the bot cannot find the item, or the term searched is not an item (i.e. you type the name of a quest, etc.), then the bot will say that it could not find your item.
+**NOTE:** The bot will return the first search result of 5 that most closely matches your search term, so it isn't perfect!
 
 
 ---
