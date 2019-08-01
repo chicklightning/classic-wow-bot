@@ -12,6 +12,33 @@ using AngleSharp.Html.Dom;
 
 namespace ClassicWoWBot
 {
+    public class GeneralCommands
+    {
+        private static readonly HttpClient client = new HttpClient();
+
+        [Command("about")] // let's define this method as a command
+        [Description("Gives more information about the bot.")] // this will be displayed to tell users what this command does when they invoke help
+        public async Task About(CommandContext context) // this command takes no arguments
+        {
+            // let's trigger a typing indicator to let users know we're working
+            await context.TriggerTypingAsync();
+
+            DiscordEmoji codeEmoji = DiscordEmoji.FromName(context.Client, ":space_invader:");
+
+            // wrap it into an embed
+            var embed = new DiscordEmbedBuilder
+            {
+                Title = "About Classic WoW Bot",
+                Description = $"{codeEmoji} This is a link to my GitHub repository! From there you can view a more in-depth explanation of bot commands, and get a link to my bot page (where you can invite others to invite the bot, and vote on it).",
+                Url = "https://github.com/chicklightning/classic-wow-bot",
+                Color = DiscordColor.Violet
+            };
+
+            // respond with content
+            await context.RespondAsync(embed: embed);
+        }
+    }
+
     public class ServerCommands
     {
         private static readonly HttpClient client = new HttpClient();
@@ -170,13 +197,26 @@ namespace ClassicWoWBot
             var listRequest = svc.Cse.List(item);
 
             listRequest.Cx = customSearchEngine;
-            var searchItem = listRequest.Execute().Items[0]; // get the first search result in the list
+            listRequest.Num = 5; // get first 5 search results
+            var searchItems = listRequest.Execute();
+
+            var searchItem = new Google.Apis.Customsearch.v1.Data.Result();
+            bool itemFound = false;
+            foreach (var currentItem in searchItems.Items)
+            {
+                if (currentItem.Title.Contains("Item") && !itemFound)
+                {
+                    itemFound = true;
+                    searchItem = currentItem;
+                    break;
+                }
+            }
 
             // wrap it into an embed
             var embed = new DiscordEmbedBuilder();
             embed.WithFooter($"Search results for {item}...");
 
-            if (searchItem.Title.Contains("Item")) // item is an item!
+            if (itemFound) // item is an item!
             {
                 embed.WithTitle(searchItem.Title.Replace(" - Item - World of Warcraft", ""));
                 embed.WithDescription(searchItem.Snippet);

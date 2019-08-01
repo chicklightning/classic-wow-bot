@@ -62,6 +62,7 @@ namespace ClassicWoWBot
             this.Commands.CommandErrored += this.Commands_CommandErrored;
 
             // up next, let's register our commands
+            this.Commands.RegisterCommands<GeneralCommands>();
             this.Commands.RegisterCommands<ServerCommands>();
             this.Commands.RegisterCommands<WowHeadCommands>();
 
