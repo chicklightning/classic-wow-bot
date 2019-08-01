@@ -200,23 +200,25 @@ namespace ClassicWoWBot
             listRequest.Num = 5; // get first 5 search results
             var searchItems = listRequest.Execute();
 
-            var searchItem = new Google.Apis.Customsearch.v1.Data.Result();
-            bool itemFound = false;
-            foreach (var currentItem in searchItems.Items)
-            {
-                if (currentItem.Title.Contains("Item") && !itemFound)
-                {
-                    itemFound = true;
-                    searchItem = currentItem;
-                    break;
-                }
-            }
-
             // wrap it into an embed
             var embed = new DiscordEmbedBuilder();
             embed.WithFooter($"Search results for {item}...");
 
-            if (itemFound) // item is an item!
+            bool itemFound = false;
+            var searchItem = new Google.Apis.Customsearch.v1.Data.Result();
+            if (searchItems.Items != null)
+            {
+                foreach (var currentItem in searchItems.Items)
+                {
+                    if (currentItem.Title.Contains("Item") && !itemFound)
+                    {
+                        itemFound = true;
+                        searchItem = currentItem;
+                    }
+                }
+            }
+
+            if (itemFound) // got a result, and it's an item!
             {
                 embed.WithTitle(searchItem.Title.Replace(" - Item - World of Warcraft", ""));
                 embed.WithDescription(searchItem.Snippet);
@@ -250,11 +252,10 @@ namespace ClassicWoWBot
         }
 
         [Command("find")]
-        [Description("Returns the first link from Classic WoWHead for your search term.")]
-        public async Task Find(CommandContext context)
+        [Description("Returns the first result from Classic WoWHead for your search term.")]
+        public async Task Find(CommandContext context, [Description("The term you want to search for.")] string term)
         {
-            // let's trigger a typing indicator to let
-            // users know we're working
+            // let's trigger a typing indicator to let users know we're working
             await context.TriggerTypingAsync();
 
             // Use the default configuration for AngleSharp
@@ -263,44 +264,31 @@ namespace ClassicWoWBot
             // Create a new context for evaluating webpages with the given config
             var browseContext = BrowsingContext.New(config);
 
-            // Source to be parsed
-            string response = await client.GetStringAsync("https://status.lightshope.org/");
+            string apiKey = Environment.GetEnvironmentVariable("GOOGLE_API_KEY");
+            string customSearchEngine = Environment.GetEnvironmentVariable("SEARCH_ENGINE_KEY");
+            var svc = new Google.Apis.Customsearch.v1.CustomsearchService(new Google.Apis.Services.BaseClientService.Initializer { ApiKey = apiKey });
+            var listRequest = svc.Cse.List(term);
 
-            // Create a virtual request to specify the document to load (here from our fixed string)
-            var document = await browseContext.OpenAsync(req => req.Content(response));
+            listRequest.Cx = customSearchEngine;
+            var searchItem = listRequest.Execute().Items; // get the first search result
 
             // wrap it into an embed
-            var embed = new DiscordEmbedBuilder
-            {
-                Title = "Today's Incidents on Light's Hope"
-            };
+            var embed = new DiscordEmbedBuilder();
+            embed.WithFooter($"Search results for {term}...");
 
-            // Grab the first relevant section, <div class="alert ..."></div> from the doc
-            var incidentDiv = document.QuerySelector("div.panel-body > p");
-            string incidentList = incidentDiv.TextContent;
-
-            DiscordEmoji incidentStatusEmoji;
-            DiscordColor textColor;
-            string incidentStatus;
-            if (incidentList.Equals("No incidents reported"))
+            if (searchItem != null) // found a search result!
             {
-                // Set to 👌
-                incidentStatusEmoji = DiscordEmoji.FromName(context.Client, ":ok_hand:");
-                incidentStatus = "No incidents reported today.";
+                embed.WithTitle(searchItem[0].Title.Replace(" - World of Warcraft", ""));
+                embed.WithDescription(searchItem[0].Snippet);
+                embed.WithUrl(searchItem[0].Link);
             }
-            else
+            else // not an item
             {
-                // Set to ❗
-                incidentStatusEmoji = DiscordEmoji.FromName(context.Client, ":exclamation:");
-                incidentStatus = "There was an incident today.";
-                textColor = DiscordColor.Gold;
-                embed.WithColor(textColor);
-                embed.WithUrl("https://status.lightshope.org/");
+                DiscordEmoji searchEmoji = DiscordEmoji.FromName(context.Client, ":grimacing:");
+                embed.WithTitle($"{searchEmoji} Couldn't find a page for this term, is it possible you misspelled it or it isn't from Classic WoW?");
             }
 
-            embed.WithDescription($"{incidentStatusEmoji} {incidentStatus}");
-
-            // send response
+            // respond with content
             await context.RespondAsync(embed: embed);
         }
     }
